@@ -22,6 +22,8 @@ public class Player
     private static String[] image;
     private Location location;
     private final ArrayList<Item> inv;
+    private final ArrayList<Item> arrowInv;
+    private Enemy currEnemy;
 
     public Player(int maxHp, Location location)
     {
@@ -36,8 +38,18 @@ public class Player
         heal = 0.0;
         red = orange = yellow = green = blue = indigo = pink = false;
         revive = false;
+        image = new String[] 
+        {
+            "`.        ___     .’",
+            " ‘. ` . /     \\ . ’ ", 
+            "    ‘   )  v  | .  ",
+            "        \\    / ",
+            "         w  w"
+        };
         this.location = location; 
         inv = new ArrayList<>();
+        arrowInv = new ArrayList<>();
+        currEnemy = null;
     }
 
     public void go(String dir)
@@ -49,7 +61,7 @@ public class Player
             location.initLoc();
             return;
         }
-        Location loc = location.travelPath(dir);
+        Location loc = location.travelPath(dir, this);
         if (loc != null)
         {
             location = loc; 
@@ -63,6 +75,9 @@ public class Player
             location.setHelp(prev.getHelp());
             location.setOppLoc(prev.getOppLoc());
             location.setNextLoc(prev.getNextLoc());
+            location.setEnemyStep(prev.getEnemyStep());
+            location.setEnemies(prev.getEnemies());
+            location.setEnemyDefeated(prev.getEnemyDefeated());
         }
     }
     private String normalizeDir(String dir)
@@ -241,6 +256,7 @@ public class Player
                 }
             }
             System.out.println("Equipped!");
+            arrowInv.add(i);
             inv.remove(i);
             featherSpace--;
         }
@@ -297,6 +313,7 @@ public class Player
                 }
         }
         System.out.println("Unequipped!");
+        arrowInv.remove(i);
         inv.add(i);
         featherSpace++;
     }
@@ -304,6 +321,13 @@ public class Player
     public Item itemFromKey(String s)
     {
         for (Item i: inv)
+        {
+            if (i.haveSameKeyword(s))
+            {
+                return i;
+            }
+        }
+        for (Item i: arrowInv) 
         {
             if (i.haveSameKeyword(s))
             {
@@ -359,6 +383,11 @@ public class Player
     {
         location = newLocation;
     }
+    public void setEnemy(Enemy newEnemy)
+    {
+        currEnemy = newEnemy;
+    }
+
     public boolean haveSame()
     {
         for (int i = 0; i < inv.size() - 1; i++)
@@ -389,7 +418,7 @@ public class Player
                     location.addItem(i2);
                     inv.remove(i1);
                     inv.remove(i2);
-                    System.out.println("Something strange occurs when the feathers draw near one another. You drop them and watch as they seem to repel one another.");
+                    System.out.println("\nSomething strange occurs when the feathers draw near one another. You drop them and watch as they seem to repel one another.");
                     return;
                 }
             }
@@ -457,6 +486,65 @@ public class Player
     {
         return pink;
     }
+    public boolean isFeatherEquipped(Item i)
+    {
+        if (i.getColor() != null)
+        {
+            switch(i.getColor())
+                    {
+                        case "red" -> 
+                            {
+                                if (red) 
+                                {
+                                    return true;
+                                }
+                            }
+                            case "orange" -> 
+                            {
+                                if (orange) 
+                                {
+                                    return true;
+                                }
+                            }
+                            case "yellow" -> 
+                            {
+                                if (yellow) 
+                                {
+                                    return true;
+                                }
+                            }
+                            case "green" -> 
+                            {
+                                if (green) 
+                                {
+                                    return true;
+                                }
+                            }
+                            case "blue" -> 
+                            {
+                                if (blue) 
+                                {
+                                    return true;
+                                }
+                            }
+                            case "indigo" -> 
+                            {
+                                if (indigo) 
+                                {
+                                    return true;
+                                }
+                            }
+                            case "pink" -> 
+                            {
+                                if (pink) 
+                                {
+                                    return true;
+                                }
+                            }
+                    }
+        }
+        return false;
+    }
     public static int getNumEquipped()
     {
         int out = 0;
@@ -512,6 +600,10 @@ public class Player
     public ArrayList<Item> getInv()
     {
         return new ArrayList<>(inv);
+    }
+    public Enemy getCurrEnemy()
+    {
+        return currEnemy;
     }
     public String printStats()
     {
