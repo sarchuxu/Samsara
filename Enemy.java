@@ -17,7 +17,7 @@ public class Enemy
         this.atk = atk;
     }
 
-    public void setCurrHp(int change)
+    public void changeCurrHp(int change)
     {
         currHp += change;
     }
