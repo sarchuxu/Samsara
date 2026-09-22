@@ -147,13 +147,13 @@ public class Item
                 }
             }
         }
-        else if ((id == 4 || id == 7) && l.stepNum() < l.getPath().length)
+        else if ((id == 4 || id == 7) && l.getStepNum() < l.getPath().length)
         {
-            out += "\nThe flames on the feather shift in the wind before pointing to the " + normalizeDir(l.getPath()[l.stepNum()]) + ".";
+            out += "\nThe flames on the feather shift in the wind before pointing to the " + normalizeDir(l.getPath()[l.getStepNum()]) + ".";
         }
-        else if ((id == 20 || id == 21) && l.stepNum() < l.getPath().length)
+        else if ((id == 20 || id == 21) && l.getStepNum() < l.getPath().length)
         {
-            out += "\nThe feather is lightly stirred by the breeze, spinning around until it finally stops in the " + normalizeDir(l.getPath()[l.stepNum()]) + " direction.";
+            out += "\nThe feather is lightly stirred by the breeze, spinning around until it finally stops in the " + normalizeDir(l.getPath()[l.getStepNum()]) + " direction.";
         }
         return out;
     }
