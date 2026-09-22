@@ -2,17 +2,27 @@ import java.util.*;
 
 public class Game 
 {
+    /* Items */
     String[] bowKeywords, arrowKeywords, mapKeywords, tRedKeywords, compassKeywords, penKeywords, gRedKeywords, gOrangeKeywords, tOrangeKeywords, gYellowKeywords, tYellowKeywords, gGreenKeywords, tGreenKeywords, gBlueKeywords, tBlueKeywords, musicKeywords, musicKeyKeywords, gIndigoKeywords, tIndigoKeywords, gPinkKeywords, tPinkKeywords, scrollKeywords;
     Item bow, arrow, map, tRed, compass, pen, gRed, gOrange, tOrange, gYellow, tYellow, gGreen, tGreen, gBlue, tBlue, music, musicKey, gIndigo, tIndigo, gPink, tPink, scroll;
     ArrayList<Item> allItems;
 
+    /* Combat */
+    int[] templeEnemyStep, gRedRoomEnemyStep, gOrangeRoomEnemyStep, tOrangeRoomEnemyStep, gYellowRoomEnemyStep, tYellowRoomEnemyStep, gGreenRoomEnemyStep, tGreenRoomEnemyStep, gBlueRoomEnemyStep, tBlueRoomEnemyStep, gIndigoRoomEnemyStep, tIndigoRoomEnemyStep, gPinkRoomEnemyStep, tPinkRoomEnemyStep;
+    Enemy[] templeEnemies, gRedRoomEnemies, gOrangeRoomEnemies, tOrangeRoomEnemies, gYellowRoomEnemies, tYellowRoomEnemies, gGreenRoomEnemies, tGreenRoomEnemies, gBlueRoomEnemies, tBlueRoomEnemies, gIndigoRoomEnemies, tIndigoRoomEnemies, gPinkRoomEnemies, tPinkRoomEnemies;
+    Enemy snake;
+    String[] snakeImage;
+
+    /* Location */
     String[] templePath, gRedRoomPath, gOrangeRoomPath, tOrangeRoomPath, gYellowRoomPath, tYellowRoomPath, gGreenRoomPath, tGreenRoomPath, gBlueRoomPath, tBlueRoomPath, gIndigoRoomPath, tIndigoRoomPath, gPinkRoomPath, tPinkRoomPath;
     ArrayList<Item> templeItems, gRedRoomItems, gOrangeRoomItems, tOrangeRoomItems, gYellowRoomItems, tYellowRoomItems, gGreenRoomItems, tGreenRoomItems, gBlueRoomItems, tBlueRoomItems, gIndigoRoomItems, tIndigoRoomItems, gPinkRoomItems, tPinkRoomItems;
     Location temple, gRedRoom, gOrangeRoom, tOrangeRoom, gYellowRoom, tYellowRoom, gGreenRoom, tGreenRoom, gBlueRoom, tBlueRoom, gIndigoRoom, tIndigoRoom, gPinkRoom, tPinkRoom;
     public static Location maze;
 
     Player player;
-    Enemy currEnemy;
+
+    GameState state;
+    Combat combat;
 
     public Game() 
     {
@@ -26,11 +36,11 @@ public class Game
 
     private void startGame()
     {
-        GameState state = GameState.DEFAULT;
+        state = GameState.DEFAULT;
         populate();
         player = new Player(10, temple);
         String input = "";
-        System.out.println("Welcome to Samsara!\nType 'list commands' for options.\n");
+        System.out.println("\nWELCOME to SAMSARA!\nType 'list commands' for options.\n");
         player.getLoc().initLoc();
         try (Scanner sc = new Scanner(System.in)) 
         {
@@ -69,7 +79,7 @@ public class Game
             case "list" -> 
             {
                 if (obj.equals("commands") || obj.equals("command"))
-                System.out.println("Available commands:\nGo: north/northeast/n/ne\nExamine: room/item\nTake: object\nInventory\nHelp");
+                System.out.println("Available commands:\nGo [north/northeast/n/ne]\nExamine [room/item]\nTake [object]\nInventory\nHelp\nSamsara");
             }
             case "inventory", "inv" -> 
             {
@@ -92,9 +102,22 @@ public class Game
                 else
                 {
                     player.go(command[1]);
+                    if (player.getCurrEnemy() != null)
+                    {
+                        state = GameState.FIGHT;
+                        startCombat();
+                    }
                 }
             }
-            case "n", "ne", "e", "se", "s", "sw", "w", "nw", "north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest" -> player.go(verb);
+            case "n", "ne", "e", "se", "s", "sw", "w", "nw", "north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest" -> 
+            {
+                player.go(verb);
+                if (player.getCurrEnemy() != null)
+                {
+                    state = GameState.FIGHT;
+                    startCombat();
+                }
+            }
             case "take", "get", "grab" -> 
             { 
                 if (command.length < 2)
@@ -162,7 +185,7 @@ public class Game
                 int rand = (int) (Math.random() * notRecogMsg.length);
                 System.out.println(notRecogMsg[rand]);
             }
-            case "equip" -> 
+            case "equip", "use" -> 
             {
                 if (command.length < 2)
                 {
@@ -358,6 +381,11 @@ public class Game
                     }
                 }
             }
+            case "samsara" -> 
+            {
+                Game game = new Game();
+                game.startGame();
+            }
             default -> 
             { 
                 String[] notRecogMsg = {"What do you mean?", "I don't know what that means", "Unknown command. For a list of possible commands, type 'list commands'", "Come again?", "I'm not sure that's possible"};
@@ -368,18 +396,44 @@ public class Game
     }
     private void fightCommand(String input)
     {
-        Combat combat = new Combat(player, currEnemy);
         if (input.isBlank()) return;
         switch (input)
         {
-            case "1", "attack" -> combat.attack();
+            case "1", "attack" -> 
+            {
+                combat.attack(player);
+                printCombatTurn();
+                if (player.getCurrEnemy() == null)
+                {
+                    state = GameState.DEFAULT;
+                }
+            }
+            case "2", "flee", "escape" -> 
+            {
+                combat.flee();
+                combat.print();
+                state = GameState.DEFAULT;
+            }
+            default -> System.out.println("That's not an option!");
         }
     }
 
     private void look(String obj)
     {
-        Item i = player.itemFromKey(obj);
+        Item i = null;
+        if (player.itemFromKey(obj) != null)
+        {
+            i = player.itemFromKey(obj);
+        }
+        else if (player.getLoc().itemFromKey(obj) != null)
+        {
+            i = player.getLoc().itemFromKey(obj);
+        }
         if (player.isInInv(i))
+        {
+            System.out.println(i.getDescription(player.getLoc()));
+        }
+        else if (player.isFeatherEquipped(i))
         {
             System.out.println(i.getDescription(player.getLoc()));
         }
@@ -508,7 +562,46 @@ public class Game
         
         allItems = new ArrayList<> (Arrays.asList(bow, arrow, map, tRed, compass, pen, gRed, gOrange, tOrange, gYellow, tYellow, gGreen, tGreen, gBlue, tBlue, music, musicKey, gIndigo, tIndigo, gPink, tPink, scroll));
     
-        /* Rooms */
+        /* Combat */
+        snakeImage = new String[]{
+            " _", 
+            "\\_/", 
+            "   |", 
+            "   /",
+            "<-'"
+        };
+        snake = new Enemy("Snake", "A small garden snake. Harmless... mostly.", snakeImage, 5, 1);
+
+        templeEnemyStep = new int[]{};
+        templeEnemies = new Enemy[templeEnemyStep.length];
+        gRedRoomEnemyStep = new int[]{4};
+        gRedRoomEnemies = new Enemy[]{snake};
+        gOrangeRoomEnemyStep = new int[]{};
+        gOrangeRoomEnemies = new Enemy[gOrangeRoomEnemyStep.length];
+        tOrangeRoomEnemyStep = new int[]{};
+        tOrangeRoomEnemies = new Enemy[tOrangeRoomEnemyStep.length];
+        gYellowRoomEnemyStep = new int[]{};
+        gYellowRoomEnemies = new Enemy[gYellowRoomEnemyStep.length];
+        tYellowRoomEnemyStep = new int[]{};
+        tYellowRoomEnemies = new Enemy[tYellowRoomEnemyStep.length];
+        gGreenRoomEnemyStep = new int[]{};
+        gGreenRoomEnemies = new Enemy[gGreenRoomEnemyStep.length];
+        tGreenRoomEnemyStep = new int[]{};
+        tGreenRoomEnemies = new Enemy[tGreenRoomEnemyStep.length];
+        gBlueRoomEnemyStep = new int[]{};
+        gBlueRoomEnemies = new Enemy[gBlueRoomEnemyStep.length];
+        tBlueRoomEnemyStep = new int[]{};
+        tBlueRoomEnemies = new Enemy[tBlueRoomEnemyStep.length];
+        gIndigoRoomEnemyStep = new int[]{};
+        gIndigoRoomEnemies = new Enemy[gIndigoRoomEnemyStep.length];
+        tIndigoRoomEnemyStep = new int[]{};
+        tIndigoRoomEnemies = new Enemy[tIndigoRoomEnemyStep.length];
+        gPinkRoomEnemyStep = new int[]{};
+        gPinkRoomEnemies = new Enemy[gPinkRoomEnemyStep.length];
+        tPinkRoomEnemyStep = new int[]{};
+        tPinkRoomEnemies = new Enemy[tPinkRoomEnemyStep.length];
+
+        /* Location */
         templePath = new String[]{};
         gRedRoomPath = new String[]{"n", "ne", "e", "se", "s", "sw", "w", "nw"};
         gOrangeRoomPath = new String[]{"n", "n", "e", "se", "sw", "w", "e", "se", "sw", "w"};
@@ -539,21 +632,21 @@ public class Game
         gPinkRoomItems = new ArrayList<>();
         tPinkRoomItems = new ArrayList<>();
 
-        temple = new Location("Temple of Ouroboros", "You are in an ancient room of crumbling rock. You have the faint sense that you've been here before.", "Maybe you should look at the world outside this room?", "On a stone slab, you see: ", templeItems, templePath);
-        gRedRoom = new Location("Vipers' Cove", "You see a giant hall of glittering green rock. Your reflections surround you, tinted in an emerald hue. Behind every wall comes a slithering sound.", "The feather may point you to its kin, should you examine it closely.", "A table of glassy jade contains: ", gRedRoomItems, gRedRoomPath);
-        gOrangeRoom = new Location("Bed of Basilisks", "Before you is an abundance of braziers, burning blue. You stand at the bottom left bound of the batch, looking at the twice bouncing shape made of eight braziers.", "Travel in the shape of a 'B' made of eight points, starting from the lower right corner.", "Below a brazier, you behold: ", gOrangeRoomItems, gOrangeRoomPath);
-        tOrangeRoom = new Location("Bifurcated Bed of Basilisks", "Before you is an abundance of braziers, burning blue. You stand at the bottom left bound of the batch, looking at the twice bouncing shape made of eight braziers.", "Travel in the shape of a 'B' made of eight points, starting from the lower right corner. Then again, do you have to?", "Below a brazier, you behold: ", tOrangeRoomItems, tOrangeRoomPath);
-        gYellowRoom = new Location("Gauntlet", "An imposing archway stands before you, and try as you might, you cannot see beyond it. Along the arch, the letters “S S S” are carved. A warning from the maze's serpentine occupants?", "Go south and battle your way to the next room.", "At the foot of the arch rests:", gYellowRoomItems, gYellowRoomPath);
-        tYellowRoom = new Location("Mirrored Gauntlet", "An imposing archway stands before you, and try as you might, you cannot see beyond it. Along the arch, the letters “S S S” are carved. A warning from the maze's serpentine occupants?", "Go south and battle your way to the next room. Then again, do you have to?", "At the foot of the arch rests:", tYellowRoomItems, tYellowRoomPath);
-        gGreenRoom = new Location("Clockwise Stars", "The enormous room seems empty, but for nine lights arranged like a constellation. Inscriptions glow and fade along the walls, and you catch two words: Serpens Caput. If this is a snake, you would be standing directly to the south of its tail.", " Travel clockwise in the shape of the Serpens Caput constellation, starting from its tail.", "Floating in the center of the room is: ", gGreenRoomItems, gGreenRoomPath);
-        tGreenRoom = new Location("Reflected Clockwise Stars", "The enormous room seems empty, but for nine lights arranged like a constellation. Inscriptions glow and fade along the walls, and you catch two words: Serpens Caput. If this is a snake, you would be standing directly to the south of its tail. Then again, do you have to?", " Travel clockwise in the shape of the Serpens Caput constellation, starting from its tail. Then again, do you have to?", "Floating in the center of the room is: ", tGreenRoomItems, tGreenRoomPath);
-        gBlueRoom = new Location("Twin Diamond Scales", "You feel that there are walls around, but wherever you look, there is only emptiness. The way the ground continues in the soft orange light is almost… infinite, looping back on itself. You look at your arrow, which points to the northeast.", "Go in the shape of the infinity symbol starting from the northeast.", "Suddenly, you see in your hand:", gBlueRoomItems, gBlueRoomPath);
-        tBlueRoom = new Location("Infinite Scales", "You feel that there are walls around, but wherever you look, there is only emptiness. The way the ground continues in the soft orange light is almost… infinite, looping back on itself. You look at your arrow, which points to the northeast.", "Go in the shape of the infinity symbol starting from the northeast. Then again, do you have to?", "Suddenly, you see in your hand:", tBlueRoomItems, tBlueRoomPath);
-        gIndigoRoom = new Location("Menagerie", "A large array of cages are haphazardly stacked around the room, all unlocked and empty. From the distance, you hear a simple tune, repeated over and over again.", "Wrap the music key around your compass.", "On a strangely out-of-place music stand, you see:", gIndigoRoomItems, gIndigoRoomPath);
-        tIndigoRoom = new Location("Menagerie...?", "A large array of cages are haphazardly stacked around the room, all unlocked and empty. From the distance, you hear a simple tune, repeated over and over again.", "Wrap the music key around your compass. Then again, do you have to?", "On a strangely out-of-place music stand, you see:", tIndigoRoomItems, tIndigoRoomPath);
-        gPinkRoom = new Location("Beginning of the End", "There are piles of tiny feathers of all colors of the rainbow strewn around giant nests. However, you feel a strange sense of icy death from them. Only one feather still feels warm and ready to fly.", "Follow the feather's guidance.", "Resting in a shattered incubator lies: ", gPinkRoomItems, gPinkRoomPath);
-        tPinkRoom = new Location("End of the Beginning", "There are piles of tiny feathers of all colors of the rainbow strewn around giant nests. However, you feel a strange sense of icy death from them. Only one feather still feels warm and ready to fly.", "Follow the feather's guidance. Then again, do you have to?", "Resting in a shattered incubator lies: ", tPinkRoomItems, tPinkRoomPath);
-        maze = new Location("Winding Maze", "You hear the walls shifting around you, but when you turn to look, there is only a cold wall. You are certain you cannot find your way back to the previous room, if it still exists.", "", "", new ArrayList<>(), new String[0]);
+        temple = new Location("Temple of Ouroboros", "You are in an ancient room of crumbling rock. You have the faint sense that you've been here before.", "Maybe you should look at the world outside this room?", "On a stone slab, you see: ", templeItems, templePath, templeEnemyStep, templeEnemies);
+        gRedRoom = new Location("Vipers' Cove", "You see a giant hall of glittering green rock. Your reflections surround you, tinted in an emerald hue. Behind every wall comes a slithering sound.", "The feather may point you to its kin, should you examine it closely.", "A table of glassy jade contains: ", gRedRoomItems, gRedRoomPath, gRedRoomEnemyStep, gRedRoomEnemies);
+        gOrangeRoom = new Location("Bed of Basilisks", "Before you is an abundance of braziers, burning blue. You stand at the bottom left bound of the batch, looking at the twice bouncing shape made of eight braziers.", "Travel in the shape of a 'B' made of eight points, starting from the lower right corner.", "Below a brazier, you behold: ", gOrangeRoomItems, gOrangeRoomPath, gOrangeRoomEnemyStep, gOrangeRoomEnemies);
+        tOrangeRoom = new Location("Bifurcated Bed of Basilisks", "Before you is an abundance of braziers, burning blue. You stand at the bottom left bound of the batch, looking at the twice bouncing shape made of eight braziers.", "Travel in the shape of a 'B' made of eight points, starting from the lower right corner. Then again, do you have to?", "Below a brazier, you behold: ", tOrangeRoomItems, tOrangeRoomPath, tOrangeRoomEnemyStep, tOrangeRoomEnemies);
+        gYellowRoom = new Location("Gauntlet", "An imposing archway stands before you, and try as you might, you cannot see beyond it. Along the arch, the letters “S S S” are carved. A warning from the maze's serpentine occupants?", "Go south and battle your way to the next room.", "At the foot of the arch rests:", gYellowRoomItems, gYellowRoomPath, gYellowRoomEnemyStep, gYellowRoomEnemies);
+        tYellowRoom = new Location("Mirrored Gauntlet", "An imposing archway stands before you, and try as you might, you cannot see beyond it. Along the arch, the letters “S S S” are carved. A warning from the maze's serpentine occupants?", "Go south and battle your way to the next room. Then again, do you have to?", "At the foot of the arch rests:", tYellowRoomItems, tYellowRoomPath, tYellowRoomEnemyStep, tYellowRoomEnemies);
+        gGreenRoom = new Location("Clockwise Stars", "The enormous room seems empty, but for nine lights arranged like a constellation. Inscriptions glow and fade along the walls, and you catch two words: Serpens Caput. If this is a snake, you would be standing directly to the south of its tail.", " Travel clockwise in the shape of the Serpens Caput constellation, starting from its tail.", "Floating in the center of the room is: ", gGreenRoomItems, gGreenRoomPath, gGreenRoomEnemyStep, gGreenRoomEnemies);
+        tGreenRoom = new Location("Reflected Clockwise Stars", "The enormous room seems empty, but for nine lights arranged like a constellation. Inscriptions glow and fade along the walls, and you catch two words: Serpens Caput. If this is a snake, you would be standing directly to the south of its tail. Then again, do you have to?", " Travel clockwise in the shape of the Serpens Caput constellation, starting from its tail. Then again, do you have to?", "Floating in the center of the room is: ", tGreenRoomItems, tGreenRoomPath, tGreenRoomEnemyStep, tGreenRoomEnemies);
+        gBlueRoom = new Location("Twin Diamond Scales", "You feel that there are walls around, but wherever you look, there is only emptiness. The way the ground continues in the soft orange light is almost… infinite, looping back on itself. You look at your arrow, which points to the northeast.", "Go in the shape of the infinity symbol starting from the northeast.", "Suddenly, you see in your hand:", gBlueRoomItems, gBlueRoomPath, gBlueRoomEnemyStep, gBlueRoomEnemies);
+        tBlueRoom = new Location("Infinite Scales", "You feel that there are walls around, but wherever you look, there is only emptiness. The way the ground continues in the soft orange light is almost… infinite, looping back on itself. You look at your arrow, which points to the northeast.", "Go in the shape of the infinity symbol starting from the northeast. Then again, do you have to?", "Suddenly, you see in your hand:", tBlueRoomItems, tBlueRoomPath, tBlueRoomEnemyStep, tBlueRoomEnemies);
+        gIndigoRoom = new Location("Menagerie", "A large array of cages are haphazardly stacked around the room, all unlocked and empty. From the distance, you hear a simple tune, repeated over and over again.", "Wrap the music key around your compass.", "On a strangely out-of-place music stand, you see:", gIndigoRoomItems, gIndigoRoomPath, gIndigoRoomEnemyStep, gIndigoRoomEnemies);
+        tIndigoRoom = new Location("Menagerie...?", "A large array of cages are haphazardly stacked around the room, all unlocked and empty. From the distance, you hear a simple tune, repeated over and over again.", "Wrap the music key around your compass. Then again, do you have to?", "On a strangely out-of-place music stand, you see:", tIndigoRoomItems, tIndigoRoomPath, tIndigoRoomEnemyStep, tIndigoRoomEnemies);
+        gPinkRoom = new Location("Beginning of the End", "There are piles of tiny feathers of all colors of the rainbow strewn around giant nests. However, you feel a strange sense of icy death from them. Only one feather still feels warm and ready to fly.", "Follow the feather's guidance.", "Resting in a shattered incubator lies: ", gPinkRoomItems, gPinkRoomPath, gPinkRoomEnemyStep, gPinkRoomEnemies);
+        tPinkRoom = new Location("End of the Beginning", "There are piles of tiny feathers of all colors of the rainbow strewn around giant nests. However, you feel a strange sense of icy death from them. Only one feather still feels warm and ready to fly.", "Follow the feather's guidance. Then again, do you have to?", "Resting in a shattered incubator lies: ", tPinkRoomItems, tPinkRoomPath, tPinkRoomEnemyStep, tPinkRoomEnemies);
+        maze = new Location("Winding Maze", "You hear the walls shifting around you, but when you turn to look, there is only a still, cold wall. You are certain you cannot find your way back to the previous room, if it still exists.", "", "", new ArrayList<>(), new String[0], new int[0], new Enemy[0]);
     }
     public static Location getMaze()
     {
@@ -569,5 +662,20 @@ public class Game
             }
         }
         return null;
+    }
+    public void startCombat()
+    {
+        combat = new Combat(player, player.getCurrEnemy(), player.getLoc());
+        System.out.println("A monster blocks your way!");
+        System.out.println(player.getCurrEnemy().getDescription());
+        printCombatTurn();
+
+    }
+    public void printCombatTurn()
+    {
+        System.out.println("<><><><><><><><><><><><><><><><><><><><>");
+        combat.print();
+        System.out.println("<><><><><><><><><><><><><><><><><><><><>");
+        System.out.println("Actions:\n[1] Attack\n[2] Flee");
     }
 }
